@@ -1,2 +1,56 @@
 instal for comple in linux ubutun wint ams and py
 1.
+sudo apt update
+sudo apt install build-essential bison flex grub-pc xorriso mtools qemu-system-x86
+2.
+# Intento 1: Instalar desde el paquete (funciona en muchas distribuciones)
+sudo apt install crossbuild-essential-i386
+
+# Si falla, busca el paquete específico, por ejemplo:
+# sudo apt install binutils-i686-elf gcc-i686-elf
+3.
+# 1. Asegurar que Python y pip estén instalados
+sudo apt install python3 python3-pip
+
+# 2. Instalar PySide6 (la librería Qt de Python)
+# Esto es necesario para compilar y ejecutar las aplicaciones de alto nivel (Calculadora, Escritorio)
+pip install PySide6
+4.
+Paso 1: Compilar el Ensamblador y el Kernel C
+Compilamos cada módulo y el Core C++ a archivos objeto (.o).
+
+Bash
+
+# 1. Crear el directorio de compilación
+mkdir -p build
+
+# 2. Compilar Ensamblador (boot.asm)
+i686-elf-as src/boot/boot.asm -o build/boot.o
+
+# 3. Compilar el Kernel C (kernel.c)
+i686-elf-gcc -c src/kernel/kernel.c -o build/kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+
+# 4. Compilar el Core C++ (libpyos_core.cpp)
+# Nota: Esto se linkea al kernel.c, NO es una librería compartida en este punto de bajo nivel.
+i686-elf-gcc -c src/cpp/libpyos_core.cpp -o build/core.o -std=c++11 -ffreestanding -O2 -Wall -Wextra
+Paso 2: Linkear (Enlazar) el Kernel
+Usamos el linker.ld para crear el binario final del Kernel (kernel.bin).
+
+Bash
+
+i686-elf-gcc -T build/linker.ld -o build/kernel.bin -ffreestanding -O2 -nostdlib build/boot.o build/kernel.o build/core.o -lgcc
+Paso 3: Crear la Imagen ISO Booteable
+Usamos GRUB y xorriso para meter el kernel.bin dentro de una imagen ISO que pueda arrancar en VirtualBox o QEMU.
+
+A. Crear estructura de carpetas para el ISO:
+
+Bash
+
+mkdir -p iso/boot/grub
+cp build/kernel.bin iso/boot/kernel.bin
+
+# Crear la estructura de directorios de la Capa de Aplicación
+mkdir -p iso/bin/pyos/apps
+cp bin/pyos/*.py iso/bin/pyos/
+cp bin/pyos/apps/*.py iso/bin/pyos/apps/
+# NOTA: Los archivos .py serán accesibles por el Kernel C++
